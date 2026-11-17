@@ -75,27 +75,27 @@
 			[
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/GLProject"
+					"path" : "C:/college-projects/opengl/openGL-cards/GLProject"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/GLFW"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/GLFW"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/imgui"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/imgui"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/imgui/backends"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/imgui/backends"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/glad"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/glad"
 				}
 			],
 			"language" : "CXX",
@@ -125,27 +125,27 @@
 			[
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/GLProject"
+					"path" : "C:/college-projects/opengl/openGL-cards/GLProject"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/GLFW"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/GLFW"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/imgui"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/imgui"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/imgui/backends"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/imgui/backends"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/glad"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/glad"
 				}
 			],
 			"language" : "C",
@@ -251,12 +251,6 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "GLProject/Main.cpp",
-			"sourceGroupIndex" : 0
-		},
-		{
-			"backtrace" : 1,
-			"compileGroupIndex" : 0,
 			"path" : "GLProject/Polygon.cpp",
 			"sourceGroupIndex" : 0
 		},
@@ -264,6 +258,12 @@
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
 			"path" : "GLProject/PolygonWithTexture.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "GLProject/main.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{

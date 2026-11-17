@@ -69,23 +69,23 @@
 			[
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/imgui"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/imgui"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/imgui/backends"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/imgui/backends"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/glad"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/glad"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/GLFW"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/GLFW"
 				}
 			],
 			"language" : "C",
@@ -105,23 +105,23 @@
 			[
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/imgui"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/imgui"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/imgui/backends"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/imgui/backends"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/glad"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/glad"
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/x10x1/Desktop/graphics/L4/OpenGL.SharedModule/dependencies/include/GLFW"
+					"path" : "C:/college-projects/opengl/openGL-cards/OpenGL.SharedModule/dependencies/include/GLFW"
 				}
 			],
 			"language" : "CXX",

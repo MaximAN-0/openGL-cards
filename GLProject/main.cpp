@@ -95,8 +95,11 @@ public:
         glEnableVertexAttribArray(1); glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,sizeof(Vertex),(void*)(3*sizeof(float)));
     }
     void plane(const Shader& s,const glm::mat4& vp,const glm::vec3& pos,const glm::vec3& scale,
-               const glm::vec3& tint,const Texture* tex=nullptr,float rotX=0) const {
-        glm::mat4 m(1); m=glm::translate(m,pos); m=glm::rotate(m,glm::radians(rotX),glm::vec3(1,0,0)); m=glm::scale(m,scale);
+               const glm::vec3& tint,const Texture* tex=nullptr,float rotX=0, float roty=0, float rotz=0) const {
+        glm::mat4 m(1); m=glm::translate(m,pos); m=glm::rotate(m,glm::radians(rotX),glm::vec3(1,0,0));
+         m=glm::rotate(m,glm::radians(roty),glm::vec3(0,1,0));
+        m=glm::rotate(m,glm::radians(rotz),glm::vec3(0,0,1));
+        m=glm::scale(m,scale);
         s.mat4("uMVP",vp*m); s.vec3("uTint",tint); s.integer("uUseTexture",tex?1:0);
         if(tex) tex->bind(); glBindVertexArray(vao); glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
     }
@@ -165,7 +168,7 @@ class CardRoom {
     Game game;
     glm::mat4 cameraVP() const {
         const bool topDown = (game.getView()==1);
-        glm::vec3 eye = topDown ? glm::vec3(0,10.5f,0.01f) : glm::vec3(7.5f,7.0f,10.5f);
+        glm::vec3 eye = topDown ? glm::vec3(0,10.5f,0.01f) : glm::vec3(6.5f,5.0f,6.5f);
         glm::vec3 target(0,0.8f,0);
         glm::vec3 up = topDown ? glm::vec3(0,0,-1) : glm::vec3(0,1,0);
         glm::mat4 view=glm::lookAt(eye,target,up);
@@ -176,9 +179,9 @@ class CardRoom {
         // Room shell: wood floor and wallpapered back/side walls.
         renderer.plane(shader,vp,{0,-0.08f,0},{14,14,1},{1,1,1},&wood,-90);
         renderer.plane(shader,vp,{0,4.0f,-7.0f},{14,8,1},{1,1,1},&wallpaper,0);
-        renderer.plane(shader,vp,{-7.0f,4.0f,0},{14,8,1},{1,1,1},&wallpaper,0);
-        renderer.plane(shader,vp,{-7.0f,4.0f,0},{14,8,1},{1,1,1},&wallpaper,0);
-        renderer.plane(shader,vp,{-7.0f,4.0f,0},{14,8,1},{1,1,1},&wallpaper,0);
+        renderer.plane(shader,vp,{0,4.0f,7.0f},{14,8,1},{1,1,1},&wallpaper,0);
+        renderer.plane(shader,vp,{7.0f,4.0f,0},{14,8,1},{1,1,1},&wallpaper,0,90);
+        renderer.plane(shader,vp,{-7.0f,4.0f,0},{14,8,1},{1,1,1},&wallpaper,0, 90);
         // Three decor pieces: bookshelf, floor lamp, and potted plant.
         renderer.box(shader,vp,{-5.4f,1.25f,-5.9f},{1.5f,2.5f,0.7f},{0.30f,0.16f,0.09f});
         renderer.box(shader,vp,{-5.4f,1.1f,-5.48f},{1.35f,0.12f,0.12f},{0.68f,0.43f,0.22f});
@@ -238,7 +241,7 @@ int main(){
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){ std::cerr<<"GLAD initialization failed\n"; return 1; }
     glEnable(GL_DEPTH_TEST);
     CardRoom game; app=&game; glfwSetKeyCallback(window,keyCallback);
-    while(!glfwWindowShouldClose(window)){
+    while(!glfwWindowShouldClose(window) && glfwGetKey(window,GLFW_KEY_ESCAPE)!=GLFW_PRESS){
         game.render(); glfwSwapBuffers(window); glfwPollEvents();
     }
     glfwTerminate(); return 0;

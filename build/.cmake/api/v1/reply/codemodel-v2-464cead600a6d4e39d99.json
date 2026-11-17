@@ -68,14 +68,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "GLProject::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-GLProject-Debug-79958e8fb7fd37294862.json",
+					"jsonFile" : "target-GLProject-Debug-6d2fef094da0a28da0a2.json",
 					"name" : "GLProject",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "OpenGL.SharedModule::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-OpenGL.SharedModule-Debug-8d02d9b6f0e0140fc6ba.json",
+					"jsonFile" : "target-OpenGL.SharedModule-Debug-01935bba251f2ae115a0.json",
 					"name" : "OpenGL.SharedModule",
 					"projectIndex" : 0
 				}
@@ -85,8 +85,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "C:/Users/x10x1/Desktop/graphics/L4/build",
-		"source" : "C:/Users/x10x1/Desktop/graphics/L4"
+		"build" : "C:/college-projects/opengl/openGL-cards/build",
+		"source" : "C:/college-projects/opengl/openGL-cards"
 	},
 	"version" : 
 	{

@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "c:/Users/x10x1/Desktop/graphics/L4/build"
+			"value" : "c:/college-projects/opengl/openGL-cards/build"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -587,7 +587,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "C:/Users/x10x1/Desktop/graphics/L4/build/CMakeFiles/pkgRedirects"
+			"value" : "C:/college-projects/opengl/openGL-cards/build/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -659,7 +659,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "C:/Users/x10x1/Desktop/graphics/L4"
+			"value" : "C:/college-projects/opengl/openGL-cards"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -1343,7 +1343,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "C:/Users/x10x1/Desktop/graphics/L4/build"
+			"value" : "C:/college-projects/opengl/openGL-cards/build"
 		},
 		{
 			"name" : "GLSolution_IS_TOP_LEVEL",
@@ -1367,7 +1367,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "C:/Users/x10x1/Desktop/graphics/L4"
+			"value" : "C:/college-projects/opengl/openGL-cards"
 		},
 		{
 			"name" : "OPENGL_gl_LIBRARY",
