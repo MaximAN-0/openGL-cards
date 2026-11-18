@@ -6,6 +6,15 @@
 class PolygonWithTexture
 {
 public:
+
+ 	PolygonWithTexture(const PolygonWithTexture&) = delete;
+    PolygonWithTexture& operator=(const PolygonWithTexture&) = delete;
+
+    ~PolygonWithTexture()
+    {
+        if (VBO) glDeleteBuffers(1, &VBO);
+        if (VAO) glDeleteVertexArrays(1, &VAO);
+    }
 	PolygonWithTexture(std::vector<glm::vec3> v, std::vector<glm::vec2> t, glm::vec3 c = glm::vec3(1.0f, 1.0f, 1.0f))
 	{
 		for (int i = 0; i < v.size(); i++)
@@ -61,10 +70,11 @@ public:
 	}
 
 private:
-	std::vector<float> vertices;
-	glm::vec3 color;
-	glm::mat4 model;
-	GLuint texture;
-	GLuint VAO;
-	PolygonWithTexture();
+    std::vector<float> vertices;
+    glm::vec3 color;
+    glm::mat4 model;
+    GLuint texture = 0;
+
+    GLuint VAO = 0;
+    GLuint VBO = 0;
 };
