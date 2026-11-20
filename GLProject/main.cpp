@@ -3,6 +3,8 @@
 //
 //  Controls
 //    1 / 2        top-down view / table view (camera slides between them)
+//    3            first-person view: your hand is shown as a fan in front of the camera
+//    4            table view mirrored to the opposite corner (behind the opponent)
 //    0            toggle cinematic "idle look-around" camera
 //    G            both players draw one card (opponent is delayed by 0.5 s)
 //    LEFT / RIGHT select a card in your hand (it slides up)
@@ -11,7 +13,7 @@
 //
 //  Assets are OPTIONAL. If a PNG is missing a procedural texture is generated:
 //    assets/wood.png  assets/wallpaper.png  assets/torn_poster.png (needs alpha)
-//    assets/cards/back.png  assets/cards/<name>.png  (the major arcana cards, 22 in total)
+//    assets/cards/back.png  assets/cards/<name>.png  (ember, frost, moss, ...)
 // =============================================================================
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -47,16 +49,21 @@
 // ----------------------------------------------------------------------------
 namespace cfg {
 constexpr int   kWindowW = 1280, kWindowH = 800;
-constexpr int   kMaxDraws = 5;
+constexpr int   kMaxDraws = 6;
 constexpr float kOpponentDelay = 0.5f;
 constexpr float kCardW = 0.82f, kCardH = 1.22f;
 constexpr float kCardY = 0.965f;          // resting height of a card above the table
-constexpr float kLayerStep = 0.01f;      // thickness of one card in a pile
+constexpr float kLayerStep = 0.012f;      // thickness of one card in a pile
 constexpr float kStockX = -2.7f, kDiscardX = 2.7f;
 constexpr float kPlayerZ = 1.5f, kOpponentZ = -1.5f;
 constexpr float kHandSpacing = 1.0f;
 constexpr float kFloorY = -0.08f;
 const glm::vec3 kSelectOffset(0.0f, 0.28f, -0.35f);  // "slide up" for a selected card
+constexpr float kSeatZ = 3.5f;        // zabuton distance from the table centre (both players)
+constexpr float kFanDist = 1.5f;      // fan pivot distance in front of the first-person camera
+constexpr float kFanDrop = 0.56f;     // how far below the view centre the fan pivot sits
+constexpr float kFanScale = 0.45f;    // fanned cards are drawn smaller
+constexpr float kFanSpread = 11.0f;   // degrees between neighbouring fanned cards
 }  // namespace cfg
 
 inline float smootherstep(float t) {
@@ -336,6 +343,25 @@ struct Primitives {
     void drawFlat(const Shader& s, const glm::vec3& pos, const glm::vec2& size, const glm::vec3& color) const {
         quad.draw(s, Transform{pos, glm::vec3(-90.f, 0.f, 0.f), glm::vec3(size, 1.f)}.matrix(), color);
     }
+    // Box positioned inside a parent coordinate frame (used by multi-part props).
+    void drawBoxLocal(const Shader& s, const glm::mat4& parent, const glm::vec3& pos, const glm::vec3& size,
+                      const glm::vec3& color) const {
+        box.draw(s, parent * Transform{pos, glm::vec3(0.f), size}.matrix(), color);
+    }
+    // Square-section bar running from point a to point b (arms, etc.).
+    void drawLimb(const Shader& s, const glm::mat4& parent, const glm::vec3& a, const glm::vec3& b, float thickness,
+                  const glm::vec3& color) const {
+        const glm::vec3 d = b - a;
+        const float len = glm::length(d);
+        if (len < 1e-4f) return;
+        const glm::vec3 y = d / len;
+        const glm::vec3 ref = std::fabs(y.y) > 0.99f ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
+        const glm::vec3 x = glm::normalize(glm::cross(ref, y));
+        const glm::vec3 z = glm::cross(x, y);
+        glm::mat4 m(glm::vec4(x, 0.f), glm::vec4(y, 0.f), glm::vec4(z, 0.f), glm::vec4((a + b) * 0.5f, 1.f));
+        m = glm::scale(m, glm::vec3(thickness, len, thickness));
+        box.draw(s, parent * m, color);
+    }
 };
 
 // ----------------------------------------------------------------------------
@@ -522,6 +548,10 @@ inline CameraPose lerpPose(const CameraPose& a, const CameraPose& b, float t) {
 // Preset poses (coordinates preserved from the original program).
 inline CameraPose topDownPose() { return {glm::vec3(0, 10.5f, 0.01f), glm::vec3(0, 0.8f, 0), glm::vec3(0, 0, -1)}; }
 inline CameraPose tablePose()   { return {glm::vec3(6.5f, 5.0f, 6.5f), glm::vec3(0, 0.8f, 0), glm::vec3(0, 1, 0)}; }
+// View 4: view 2 mirrored through the table centre (opposite corner, behind the opponent).
+inline CameraPose tableMirrorPose() { return {glm::vec3(-6.5f, 5.0f, -6.5f), glm::vec3(0, 0.8f, 0), glm::vec3(0, 1, 0)}; }
+// View 3: seated on the player's zabuton, looking across the table.
+inline CameraPose firstPersonPose() { return {glm::vec3(0, 2.0f, 3.9f), glm::vec3(0, 0.9f, 0.5f), glm::vec3(0, 1, 0)}; }
 
 class Camera {
 public:
@@ -586,7 +616,9 @@ private:
             {glm::vec3(0, 4.8f, 6.2f),      glm::vec3(0, 0.9f, 0),         glm::vec3(0, 1, 0)},  // table overview
             {glm::vec3(-1.0f, 2.2f, -1.5f), glm::vec3(-5.4f, 1.4f, -6.6f), glm::vec3(0, 1, 0)},  // bookshelf
             {glm::vec3(1.0f, 2.8f, -2.5f),  glm::vec3(1.0f, 2.9f, -6.9f),  glm::vec3(0, 1, 0)},  // torn poster
-            {glm::vec3(2.0f, 2.6f, -1.5f),  glm::vec3(4.6f, 1.8f, -6.1f),  glm::vec3(0, 1, 0)},  // plant + lamp
+            {glm::vec3(2.0f, 2.6f, -1.5f),  glm::vec3(4.2f, 1.8f, -6.1f),  glm::vec3(0, 1, 0)},  // plant + lamp
+            {glm::vec3(2.5f, 2.4f, -1.0f),  glm::vec3(6.2f, 1.2f, -6.2f),  glm::vec3(0, 1, 0)},  // armor + sword
+            {glm::vec3(3.5f, 2.4f, 1.0f),   glm::vec3(0.0f, 0.2f, -3.5f),  glm::vec3(0, 1, 0)},  // opponent's zabuton
             {glm::vec3(-6.2f, 3.0f, 5.5f),  glm::vec3(3.0f, 1.2f, -3.0f),  glm::vec3(0, 1, 0)},  // side sweep
             {glm::vec3(3.5f, 2.4f, 3.5f),   glm::vec3(-1.0f, 1.0f, 0.5f),  glm::vec3(0, 1, 0)},  // table close-up
         };
@@ -606,6 +638,10 @@ struct Pose {
     glm::vec3 position{0.f};
     float yaw = 0.f;    // rotation around the vertical axis (degrees)
     float flip = 0.f;   // 0 = face up, 180 = face down
+    float tilt = 0.f;   // 0 = lying flat on the table, 90 = standing upright facing +Z
+    float roll = 0.f;   // in-plane rotation of the card (used for the fan)
+    float scale = 1.f;  // uniform card scale
+    glm::vec3 lift = cfg::kSelectOffset;   // offset applied when the card is selected
 };
 
 class CardAnimation {
@@ -635,6 +671,10 @@ public:
         p.position.y += arc_ * std::sin(glm::pi<float>() * e);   // lift off the table while travelling
         p.yaw = glm::mix(from_.yaw, to_.yaw, e);
         p.flip = glm::mix(from_.flip, to_.flip, e);
+        p.tilt = glm::mix(from_.tilt, to_.tilt, e);
+        p.roll = glm::mix(from_.roll, to_.roll, e);
+        p.scale = glm::mix(from_.scale, to_.scale, e);
+        p.lift = glm::mix(from_.lift, to_.lift, e);
         return p;
     }
 
@@ -663,11 +703,12 @@ public:
         select_ += ((selected_ ? 1.f : 0.f) - select_) * std::min(1.f, dt * 12.f);   // smooth slide up/down
     }
     void draw(const Shader& s) const {
-        glm::mat4 m = glm::translate(glm::mat4(1.f), pose_.position + cfg::kSelectOffset * select_);
+        glm::mat4 m = glm::translate(glm::mat4(1.f), pose_.position + pose_.lift * select_);
         m = glm::rotate(m, glm::radians(pose_.yaw), glm::vec3(0, 1, 0));
-        m = glm::rotate(m, glm::radians(-90.f), glm::vec3(1, 0, 0));      // lay the quad flat
-        m = glm::rotate(m, glm::radians(pose_.flip), glm::vec3(0, 1, 0)); // flip around the card's long axis
-        const glm::vec3 size(cfg::kCardW, cfg::kCardH, 1.f), lift(0, 0, 0.002f);
+        m = glm::rotate(m, glm::radians(-90.f + pose_.tilt), glm::vec3(1, 0, 0)); // flat on the table -> upright
+        m = glm::rotate(m, glm::radians(pose_.roll), glm::vec3(0, 0, 1));         // fan rotation
+        m = glm::rotate(m, glm::radians(pose_.flip), glm::vec3(0, 1, 0));         // flip around the card's long axis
+        const glm::vec3 size(cfg::kCardW * pose_.scale, cfg::kCardH * pose_.scale, 1.f), lift(0, 0, 0.002f);
         const glm::vec3 tint = glm::mix(glm::vec3(1.f), glm::vec3(1.25f, 1.2f, 1.0f), select_);
         front_->draw(s, glm::scale(glm::translate(m, lift), size), tint);
         glm::mat4 b = glm::rotate(m, glm::radians(180.f), glm::vec3(0, 1, 0));
@@ -743,6 +784,21 @@ public:
         selected_ = std::clamp(selected_ + delta, 0, static_cast<int>(hand_.size()) - 1);
         refreshSelection();
     }
+    // Fan layout: hand floats in front of the (first-person) camera instead of lying on the table.
+    void setFan(bool on, const CameraPose& cam) {
+        if (!human_ || (!on && !fan_)) return;
+        fan_ = on;
+        if (on) {
+            const glm::vec3 d = glm::normalize(cam.target - cam.eye);
+            frame_.r = glm::normalize(glm::cross(d, glm::vec3(0, 1, 0)));
+            frame_.u = glm::cross(frame_.r, d);
+            frame_.n = -d;                                   // card normal points back at the camera
+            frame_.pivot = cam.eye + d * cfg::kFanDist - frame_.u * cfg::kFanDrop;
+            frame_.yaw = glm::degrees(std::atan2(-d.x, -d.z));
+            frame_.tilt = 90.f - glm::degrees(std::asin(-d.y));
+        }
+        relayout(-1, 0.f, 0.6f);
+    }
     std::string selectedName() const { return (human_ && !hand_.empty()) ? hand_[selected_].name() : "-"; }
 
     void update(float dt) { for (Card& c : hand_) c.update(dt); }
@@ -751,16 +807,29 @@ public:
 private:
     Pose slot(int i, int n) const {
         Pose p;
+        if (fan_) {
+            // Cards pivot around one point below the view centre; leftmost leans furthest left.
+            const float psi = ((n - 1) * 0.5f - i) * cfg::kFanSpread, a = glm::radians(psi);
+            const glm::vec3 up = frame_.u * std::cos(a) - frame_.r * std::sin(a);
+            p.position = frame_.pivot + up * (cfg::kCardH * cfg::kFanScale * 0.5f) + frame_.n * (i * 0.01f);
+            p.yaw = frame_.yaw;
+            p.tilt = frame_.tilt;
+            p.roll = psi;
+            p.scale = cfg::kFanScale;
+            p.flip = 0.f;
+            p.lift = up * 0.16f + frame_.n * 0.06f;   // a selected card slides out of the fan
+            return p;
+        }
         p.position = glm::vec3((i - (n - 1) * 0.5f) * cfg::kHandSpacing, cfg::kCardY + i * 0.002f, z_);
         p.yaw = yaw_;
         p.flip = human_ ? 0.f : 180.f;   // opponent's cards stay face down
         return p;
     }
-    void relayout(int newIndex, float delay) {
+    void relayout(int newIndex, float delay, float duration = 0.3f) {
         const int n = static_cast<int>(hand_.size());
         for (int i = 0; i < n; ++i) {
             if (i == newIndex) hand_[i].animateTo(slot(i, n), 0.7f, delay, 0.7f);
-            else               hand_[i].animateTo(slot(i, n), 0.3f);
+            else               hand_[i].animateTo(slot(i, n), duration);
         }
     }
     void refreshSelection() {
@@ -768,9 +837,15 @@ private:
     }
 
     std::string name_;
+    struct FanFrame {
+        glm::vec3 pivot{0.f}, r{1, 0, 0}, u{0, 1, 0}, n{0, 0, 1};   // camera-aligned basis
+        float yaw = 0.f, tilt = 0.f;
+    };
     bool human_;
     float z_, yaw_;
     int draws_ = 0, selected_ = 0;
+    bool fan_ = false;
+    FanFrame frame_;
     std::vector<Card> hand_;
 };
 
@@ -803,6 +878,7 @@ public:
         }
     }
     void moveSelection(int d) { player_.moveSelection(d); }
+    void setFanView(bool on, const CameraPose& cam) { player_.setFan(on, cam); }
 
     void update(float dt) {
         player_.update(dt);
@@ -840,7 +916,7 @@ inline std::vector<Card> makeCharacterDeck() {
     static const char* kNames[22] = {"0_theFool", "1_theMagician", "2_theHighPriestess", "3_theEmpress", "4_theEmperor",  "5_theHierophant",
                                      "6_theLovers",  "7_theChariot",  "8_justice", "9_theHermit", "10_wheelOfFortune", "11_strength",
                                      "12_theHangedMan", "13_death",  "14_temperance", "15_devil", "16_theTower", "17_theStar",
-                                     "18_theMoon", "19_theSun", "20_judgment", "21_theWorld"};
+                                     "18_theMoon", "19_theSun", "20_judgement", "21_theWorld"};
     auto back = std::make_shared<PolygonWithTexture>(Mesh::quad(), loadTexture("../assets/cards/back.png", false, Procedural::cardBack));
     std::vector<Card> cards;
     for (int i = 0; i < 22; ++i) {
@@ -853,13 +929,107 @@ inline std::vector<Card> makeCharacterDeck() {
 // ----------------------------------------------------------------------------
 //  Room and Table
 // ----------------------------------------------------------------------------
+// Anything in the room that draws itself from the shared primitives.
+class Decor {
+public:
+    explicit Decor(const Primitives& p) : p_(p) {}
+    virtual ~Decor() = default;
+    virtual void draw(const Shader& s) const = 0;
+
+protected:
+    const Primitives& p_;
+};
+
+// Flat floor cushion for a seated player.
+class Zabuton : public Decor {
+public:
+    Zabuton(const Primitives& p, const glm::vec3& floorPos, const glm::vec3& color)
+        : Decor(p), pos_(floorPos), color_(color) {}
+    void draw(const Shader& s) const override {
+        const glm::vec3 base = pos_ + glm::vec3(0, .06f, 0), gold(.85f, .68f, .25f);
+        p_.drawBox(s, base, {1.1f, .12f, 1.1f}, color_);                                  // body
+        p_.drawBox(s, base + glm::vec3(0, .065f, 0), {.94f, .03f, .94f}, color_ * 1.3f);  // padded top
+        p_.drawBox(s, base + glm::vec3(0, .09f, 0), {.1f, .03f, .1f}, gold);              // centre button
+        for (float sx : {-1.f, 1.f})
+            for (float sz : {-1.f, 1.f})
+                p_.drawBox(s, base + glm::vec3(sx * .55f, 0, sz * .55f), {.08f, .1f, .08f}, gold);  // corner tassels
+    }
+
+private:
+    glm::vec3 pos_, color_;
+};
+
+// Medieval suit of armor on a plinth, hands resting on a sword pommel.
+class ArmorStand : public Decor {
+public:
+    ArmorStand(const Primitives& p, const glm::vec3& floorPos, float yawDeg) : Decor(p), pos_(floorPos), yaw_(yawDeg) {}
+    void draw(const Shader& s) const override {
+        const glm::mat4 m = glm::rotate(glm::translate(glm::mat4(1.f), pos_), glm::radians(yaw_), glm::vec3(0, 1, 0));
+        const glm::vec3 steel(.62f, .64f, .68f), dark(.42f, .44f, .50f), shine(.80f, .82f, .86f);
+        const glm::vec3 wood(.25f, .14f, .08f), plume(.70f, .10f, .10f), slit(.05f, .05f, .06f);
+        auto part = [&](const glm::vec3& c, const glm::vec3& size, const glm::vec3& col) { p_.drawBoxLocal(s, m, c, size, col); };
+
+        part({0, .05f, 0}, {1.0f, .1f, 1.0f}, wood);                          // plinth
+        for (float sx : {-1.f, 1.f}) {
+            part({sx * .13f, .15f, .05f}, {.2f, .1f, .34f}, dark);            // sabatons
+            part({sx * .13f, .45f, 0}, {.14f, .5f, .14f}, steel);             // greaves
+            part({sx * .13f, .73f, .02f}, {.18f, .12f, .18f}, shine);         // knee guards
+            part({sx * .13f, .98f, 0}, {.16f, .4f, .16f}, steel);             // cuisses
+            part({sx * .36f, 1.82f, 0}, {.24f, .14f, .28f}, shine);           // pauldrons
+            p_.drawLimb(s, m, {sx * .34f, 1.75f, 0}, {sx * .38f, 1.45f, .12f}, .11f, steel);   // upper arms
+            p_.drawLimb(s, m, {sx * .38f, 1.45f, .12f}, {sx * .04f, 1.5f, .30f}, .09f, dark);  // forearms -> grip
+        }
+        part({0, 1.26f, .01f}, {.5f, .2f, .32f}, dark);                       // tassets
+        part({0, 1.6f, 0}, {.5f, .5f, .3f}, steel);                           // breastplate
+        part({0, 1.6f, .16f}, {.06f, .42f, .04f}, shine);                     // chest ridge
+        part({0, 1.92f, 0}, {.26f, .1f, .26f}, dark);                         // gorget
+        part({0, 2.1f, 0}, {.26f, .3f, .28f}, steel);                         // helmet
+        part({0, 2.1f, .145f}, {.2f, .035f, .02f}, slit);                     // visor slit
+        part({0, 2.33f, 0}, {.04f, .2f, .3f}, plume);                         // crest
+    }
+
+private:
+    glm::vec3 pos_;
+    float yaw_;
+};
+
+// Broadsword standing point-down (placed in front of the armor's hands).
+class Sword : public Decor {
+public:
+    Sword(const Primitives& p, const glm::vec3& floorPos, float yawDeg) : Decor(p), pos_(floorPos), yaw_(yawDeg) {}
+    void draw(const Shader& s) const override {
+        const glm::mat4 m = glm::rotate(glm::translate(glm::mat4(1.f), pos_), glm::radians(yaw_), glm::vec3(0, 1, 0));
+        const glm::vec3 gold(.80f, .65f, .20f);
+        p_.drawBoxLocal(s, m, {0, .74f, 0}, {.09f, 1.28f, .02f}, {.85f, .87f, .90f});     // blade
+        p_.drawBoxLocal(s, m, {0, .80f, .012f}, {.025f, .90f, .005f}, {.60f, .62f, .66f}); // fuller groove
+        p_.drawBoxLocal(s, m, {0, 1.38f, 0}, {.44f, .05f, .07f}, gold);                   // crossguard
+        p_.drawBoxLocal(s, m, {0, 1.52f, 0}, {.05f, .22f, .05f}, {.30f, .16f, .09f});     // leather grip
+        p_.drawBoxLocal(s, m, {0, 1.66f, 0}, {.10f, .08f, .10f}, gold);                   // pommel
+    }
+
+private:
+    glm::vec3 pos_;
+    float yaw_;
+};
+
 class Room {
 public:
     explicit Room(const Primitives& p)
         : prim_(p),
           floor_(Mesh::quad(), loadTexture("wood.png", true, Procedural::wood)),
           wall_(Mesh::quad(), loadTexture("wallpaper.png", true, Procedural::wallpaper)),
-          poster_(Mesh::quad(), loadTexture("torn_poster.png", false, Procedural::tornPoster)) {}
+          poster_(Mesh::quad(), loadTexture("torn_poster.png", false, Procedural::tornPoster)) {
+        const float f = cfg::kFloorY;
+        // Zabutons where the players sit (player in front, opponent across the table).
+        extras_.push_back(std::make_unique<Zabuton>(prim_, glm::vec3(0, f, cfg::kSeatZ), glm::vec3(.62f, .10f, .14f)));
+        extras_.push_back(std::make_unique<Zabuton>(prim_, glm::vec3(0, f, -cfg::kSeatZ), glm::vec3(.14f, .20f, .45f)));
+        // Armor + sword in the back-right corner, turned to face the room.
+        const glm::vec3 armorPos(6.2f, f, -6.2f);
+        const float yaw = -45.f;
+        const glm::vec3 forward(std::sin(glm::radians(yaw)), 0.f, std::cos(glm::radians(yaw)));
+        extras_.push_back(std::make_unique<ArmorStand>(prim_, armorPos, yaw));
+        extras_.push_back(std::make_unique<Sword>(prim_, armorPos + forward * 0.3f, yaw));
+    }
 
     void draw(const Shader& s) const {
         const float wallY = cfg::kFloorY + 4.f;            // walls are 8 high and meet the floor
@@ -876,6 +1046,7 @@ public:
         drawBookshelf(s);
         drawFloorLamp(s);
         drawPottedPlant(s);
+        for (const auto& d : extras_) d->draw(s);   // zabutons, armor, sword
     }
 
 private:
@@ -886,7 +1057,7 @@ private:
         prim_.drawBox(s, {cx, 1.25f, -6.93f}, {1.5f, 2.5f, 0.04f}, dark * 0.8f);
         prim_.drawBox(s, {cx - .71f, 1.25f, cz}, {.08f, 2.5f, .7f}, dark);
         prim_.drawBox(s, {cx + .71f, 1.25f, cz}, {.08f, 2.5f, .7f}, dark);
-        for (float y : {0.04f, 0.85f, 1.65f, 2.46f}) prim_.drawBox(s, {cx, y, cz}, {1.5f, .08f, .7f}, light);
+        for (float y : {0.04f, 0.85f, 1.65f, 2.46f}) prim_.drawBox(s, {cx, y, cz}, {1.34f, .08f, .62f}, light);
         static const glm::vec3 pal[6] = {{.7f, .15f, .15f}, {.15f, .35f, .6f}, {.2f, .5f, .25f},
                                          {.8f, .65f, .2f},  {.45f, .2f, .5f},  {.85f, .85f, .8f}};
         const float bases[3] = {0.08f, 0.89f, 1.69f};
@@ -895,10 +1066,36 @@ private:
                 float h = .45f + .07f * float((k * 5 + bay * 3) % 4);
                 prim_.drawBox(s, {cx - .6f + k * .19f, bases[bay] + h * .5f, cz + .05f}, {.15f, h, .45f}, pal[(k + bay * 2) % 6]);
             }
+
+        // Closed cookie jar on the top shelf
+        const glm::vec3 glass(.65f, .78f, .72f);
+        const glm::vec3 lid(.65f, .65f, .62f);
+        const float jarX = cx + .42f;
+        const float jarZ = cz - .22f;
+
+        // Jar body
+        prim_.drawBox(s, {jarX, 2.7f, jarZ},{.28f, .43f, .28f}, glass);
+
+        // Jar neck
+        prim_.drawBox(s, {jarX, 2.93f, jarZ},{.19f, .08f, .19f}, glass);
+
+        // Closed lid
+        prim_.drawBox(s, {jarX, 3.0f, jarZ},{.24f, .07f, .24f}, lid);
+
+        // Lid knob
+        prim_.drawBox(s, {jarX, 3.05f, jarZ},{.09f, .04f, .09f}, lid);
+
+        // Cookies visible through the jar
+        const glm::vec3 cookie(.72f, 1.1f, .18f);
+
+        prim_.drawBox(s, {jarX - .06f, 2.61f, jarZ + .04f},{.10f, .08f, .10f}, cookie);
+
+        prim_.drawBox(s, {jarX + .05f, 2.67f, jarZ - .03f},{.10f, .08f, .10f}, cookie);
     }
+    
     // Decor 2: floor lamp.
     void drawFloorLamp(const Shader& s) const {
-        const float x = 5.6f, z = -6.2f;
+        const float x = 4.8f, z = -6.2f;
         prim_.drawBox(s, {x, 0.03f, z}, {.5f, .06f, .5f}, {.18f, .17f, .15f});
         prim_.drawBox(s, {x, 1.56f, z}, {.07f, 3.0f, .07f}, {.18f, .17f, .15f});
         prim_.drawBox(s, {x, 3.2f, z}, {.8f, .55f, .8f}, {.95f, .80f, .45f});
@@ -907,22 +1104,46 @@ private:
     // Decor 3: potted plant.
     void drawPottedPlant(const Shader& s) const {
         const float x = 3.6f, z = -6.1f;
-        prim_.drawBox(s, {x, .275f, z}, {.6f, .55f, .6f}, {.65f, .32f, .2f});
-        prim_.drawBox(s, {x, .56f, z}, {.5f, .04f, .5f}, {.15f, .09f, .05f});
-        for (int k = 0; k < 9; ++k) {
-            const float yawA = glm::radians(k * 40.f), tilt = glm::radians(18.f + (k % 3) * 13.f);
-            const float L = .9f + .15f * (k % 3);
-            const glm::vec3 dir(std::sin(tilt) * std::cos(yawA), std::cos(tilt), std::sin(tilt) * std::sin(yawA));
-            glm::mat4 m = glm::translate(glm::mat4(1.f), glm::vec3(x, .58f, z) + dir * (L * .5f));
-            m = glm::rotate(m, -yawA, glm::vec3(0, 1, 0));
-            m = glm::rotate(m, -tilt, glm::vec3(0, 0, 1));
-            m = glm::scale(m, glm::vec3(.22f, L, .02f));
-            prim_.box.draw(s, m, glm::vec3(.12f + .04f * (k % 3), .45f + .06f * (k % 2), .18f));
-        }
+        prim_.drawBox(s, {x, .275f, z}, {.6f, .55f, .6f}, {.55f, .25f, .12f});
+        prim_.drawBox(s, {x, .56f, z}, {.5f, .04f, .5f}, {.12f, .07f, .035f});
+        prim_.drawBox(s, {x, .59f, z}, {.44f, .025f, .44f}, {.18f, .12f, .06f});
+
+        glm::mat4 trunk = glm::translate(glm::mat4(1.f), {x, .95f, z});
+        trunk = glm::rotate(trunk, glm::radians(-12.f), {0, 0, 1});
+        trunk = glm::scale(trunk, {.13f, .85f, .13f});
+        prim_.box.draw(s, trunk, {.30f, .16f, .07f});
+
+        glm::mat4 upper = glm::translate(glm::mat4(1.f), {x + .08f, 1.42f, z});
+        upper = glm::rotate(upper, glm::radians(18.f), {0, 0, 1});
+        upper = glm::scale(upper, {.09f, .35f, .09f});
+        prim_.box.draw(s, upper, {.32f, .18f, .08f});
+
+        auto branch = [&](glm::vec3 pos, glm::vec3 scale, float angle) {
+            glm::mat4 m = glm::translate(glm::mat4(1.f), pos);
+            m = glm::rotate(m, glm::radians(angle), {0, 0, 1});
+            m = glm::scale(m, scale);
+            prim_.box.draw(s, m, {.30f, .16f, .07f});
+        };
+        branch({x - .30f, 1.05f, z}, {.10f, .48f, .10f}, -65.f);
+        branch({x + .27f, 1.20f, z}, {.10f, .48f, .10f}, 65.f);
+        branch({x + .10f, 1.48f, z}, {.08f, .35f, .08f}, -45.f);
+        auto leaves = [&](glm::vec3 pos, glm::vec3 scale) {
+            glm::mat4 m = glm::translate(glm::mat4(1.f), pos);
+            m = glm::scale(m, scale);
+            prim_.box.draw(s, m, {.12f, .38f, .12f});
+        };
+        leaves({x - .48f, 1.25f, z}, {.42f, .20f, .32f});
+        leaves({x - .35f, 1.38f, z}, {.35f, .18f, .30f});
+        leaves({x + .45f, 1.40f, z}, {.43f, .20f, .32f});
+        leaves({x + .32f, 1.53f, z}, {.34f, .18f, .30f});
+        leaves({x + .08f, 1.75f, z}, {.40f, .20f, .32f});
+        leaves({x + .05f, 1.88f, z}, {.32f, .16f, .28f});
+        leaves({x, 1.48f, z}, {.30f, .18f, .30f});
     }
 
     const Primitives& prim_;
     PolygonWithTexture floor_, wall_, poster_;
+    std::vector<std::unique_ptr<Decor>> extras_;
 };
 
 class Table {
@@ -984,7 +1205,7 @@ public:
         table_ = std::make_unique<Table>(*prims_);
         game_ = std::make_unique<Game>(makeCharacterDeck());
 
-        std::cout << "\n1/2 views | 0 cinematic | G draw | LEFT/RIGHT select | D discard | ESC quit\n";
+        std::cout << "\n1-4 views (3 = first-person fan) | 0 cinematic | G draw | LEFT/RIGHT select | D discard | ESC quit\n";
     }
     ~Application() {
         // GL objects must die while the context still exists.
@@ -1016,6 +1237,8 @@ private:
             case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window_, GLFW_TRUE); break;
             case GLFW_KEY_1: if (press) setView(1); break;
             case GLFW_KEY_2: if (press) setView(2); break;
+            case GLFW_KEY_3: if (press) setView(3); break;
+            case GLFW_KEY_4: if (press) setView(4); break;
             case GLFW_KEY_0: if (press) toggleCinematic(); break;
             case GLFW_KEY_G: if (press) game_->drawRound(); break;
             case GLFW_KEY_D: if (press) game_->discardSelected(); break;
@@ -1024,13 +1247,23 @@ private:
             default: break;
         }
     }
+    static CameraPose poseFor(int v) {
+        switch (v) {
+            case 1: return topDownPose();
+            case 3: return firstPersonPose();
+            case 4: return tableMirrorPose();
+            default: return tablePose();
+        }
+    }
     void setView(int v) {
         lastFixedView_ = v;
         if (active_ == &cinematic_) { camera_.setPose(cinematic_.pose()); active_ = &camera_; }
-        camera_.transitionTo(v == 1 ? topDownPose() : tablePose());
+        camera_.transitionTo(poseFor(v), 1.1f);
+        game_->setFanView(v == 3, firstPersonPose());   // the hand fans out only in the first-person view
     }
     void toggleCinematic() {
         if (active_ == &cinematic_) { setView(lastFixedView_); return; }
+        game_->setFanView(false, firstPersonPose());
         cinematic_.begin(active_->pose());
         active_ = &cinematic_;
     }
