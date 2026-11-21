@@ -7,14 +7,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "OpenGL::GL::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-OpenGL__GL-Debug-9e44be9d4998f9f7c960.json",
+					"jsonFile" : "target-OpenGL__GL-Debug-8f41af67a778e4ace2d0.json",
 					"name" : "OpenGL::GL",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "OpenGL::GLU::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-OpenGL__GLU-Debug-b233ed6e5a783bc0df4e.json",
+					"jsonFile" : "target-OpenGL__GLU-Debug-b011a40e7e3e4e889c98.json",
 					"name" : "OpenGL::GLU",
 					"projectIndex" : 0
 				}
@@ -28,7 +28,7 @@
 						1
 					],
 					"build" : ".",
-					"jsonFile" : "directory-.-Debug-f040eec181a89de70dbe.json",
+					"jsonFile" : "directory-.-Debug-b5805d5c08fd3d92def4.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.20"
@@ -68,14 +68,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "GLProject::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-GLProject-Debug-6d2fef094da0a28da0a2.json",
+					"jsonFile" : "target-GLProject-Debug-601d83e03182256b4b7c.json",
 					"name" : "GLProject",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "OpenGL.SharedModule::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-OpenGL.SharedModule-Debug-01935bba251f2ae115a0.json",
+					"jsonFile" : "target-OpenGL.SharedModule-Debug-700cf5ca7a48469d8014.json",
 					"name" : "OpenGL.SharedModule",
 					"projectIndex" : 0
 				}
@@ -85,12 +85,12 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "C:/college-projects/opengl/openGL-cards/build",
-		"source" : "C:/college-projects/opengl/openGL-cards"
+		"build" : "C:/Projects/openGL-cards/build",
+		"source" : "C:/Projects/openGL-cards"
 	},
 	"version" : 
 	{
 		"major" : 2,
-		"minor" : 10
+		"minor" : 11
 	}
 }

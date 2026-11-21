@@ -11,7 +11,7 @@
 		],
 		"files" : 
 		[
-			"C:/Program Files/CMake/share/cmake-4.3/Modules/FindOpenGL.cmake",
+			"C:/w64devkit/share/cmake-4.4/Modules/FindOpenGL.cmake",
 			"CMakeLists.txt"
 		],
 		"nodes" : 
@@ -32,13 +32,13 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 871,
+				"line" : 869,
 				"parent" : 2
 			},
 			{
 				"command" : 2,
 				"file" : 0,
-				"line" : 875,
+				"line" : 873,
 				"parent" : 2
 			}
 		]
@@ -46,7 +46,7 @@
 	"codemodelVersion" : 
 	{
 		"major" : 2,
-		"minor" : 10
+		"minor" : 11
 	},
 	"id" : "OpenGL::GLU::@6890427a1f51a3e7e1df",
 	"imported" : true,
