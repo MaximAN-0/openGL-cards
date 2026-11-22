@@ -29,10 +29,15 @@ public:
         refreshSelection();
     }
     std::optional<Card> discardSelected() {
-        if (!human_ || hand_.empty()) return std::nullopt;
-        Card out = std::move(hand_[selected_]);
-        hand_.erase(hand_.begin() + selected_);
-        selected_ = hand_.empty() ? 0 : std::clamp(selected_, 0, static_cast<int>(hand_.size()) - 1);
+        if (!human_) return std::nullopt;
+        return discardAt(selected_);
+    }
+    // Remove the card at index i from the hand (used for the human's selection and the opponent's pick).
+    std::optional<Card> discardAt(int i) {
+        if (hand_.empty() || i < 0 || i >= static_cast<int>(hand_.size())) return std::nullopt;
+        Card out = std::move(hand_[i]);
+        hand_.erase(hand_.begin() + i);
+        if (human_) selected_ = hand_.empty() ? 0 : std::clamp(selected_, 0, static_cast<int>(hand_.size()) - 1);
         out.setSelected(false);
         relayout(-1, 0.f);
         refreshSelection();
