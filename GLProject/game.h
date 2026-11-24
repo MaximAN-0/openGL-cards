@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <memory>
+#include <optional>
 #include <random>
 #include <string>
 #include <vector>
@@ -29,14 +30,12 @@ public:
         player_.receive(deck_.drawTop(), 0.f);
         opponent_.receive(deck_.drawTop(), cfg::kOpponentDelay);
     }
+    // Player discards the selected card now; the opponent discards a random card 0.5 s later.
     void discardSelected() {
-        if (auto card = player_.discardSelected()) {
-            Pose to;
-            to.position = glm::vec3(cfg::kDiscardX, cfg::kCardY + discard_.size() * cfg::kLayerStep, 0.f);
-            to.yaw = (float(rng_() % 25) - 12.f);
-            to.flip = 0.f;
-            card->animateTo(to, 0.6f, 0.f, 0.6f);
-            discard_.push_back(std::move(*card));
+        putOnDiscardPile(player_.discardSelected(), 0.f);
+        if (opponent_.handSize() > 0) {
+            const int pick = static_cast<int>(rng_() % opponent_.handSize());
+            putOnDiscardPile(opponent_.discardAt(pick), cfg::kOpponentDelay);
         }
     }
     void moveSelection(int d) { player_.moveSelection(d); }
@@ -55,13 +54,23 @@ public:
     }
     std::string status() const {
         char buf[256];
-        std::snprintf(buf, sizeof buf, "Card Room | stock %zu | you %d/%d | opponent %d/%d | discarded %zu | selected: %s",
-                      deck_.size(), player_.draws(), cfg::kMaxDraws, opponent_.draws(), cfg::kMaxDraws,
+        std::snprintf(buf, sizeof buf, "Card Room | stock %zu | your hand %zu | opponent hand %zu | draws %d/%d | discarded %zu | selected: %s",
+                      deck_.size(), player_.handSize(), opponent_.handSize(), player_.draws(), cfg::kMaxDraws,
                       discard_.size(), player_.selectedName().c_str());
         return buf;
     }
 
 private:
+    void putOnDiscardPile(std::optional<Card> card, float delay) {
+        if (!card) return;
+        Pose to;
+        to.position = glm::vec3(cfg::kDiscardX, cfg::kCardY + discard_.size() * cfg::kLayerStep, 0.f);
+        to.yaw = (float(rng_() % 25) - 12.f);
+        to.flip = 0.f;   // lands face up
+        card->animateTo(to, 0.6f, delay, 0.6f);
+        discard_.push_back(std::move(*card));
+    }
+
     Deck deck_;
     Player player_, opponent_;
     std::vector<Card> discard_;

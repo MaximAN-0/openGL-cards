@@ -10,8 +10,12 @@ loaded directly with `wglGetProcAddress`; no third-party libraries are needed.
 ## Controls
 
 - `1`: top-down view with the stock pile arranged horizontally
-- `2`: clear card layout view
-- `G`: both players draw one random card; draws stop after six presses
+- `2`: table view with cards in hand
+- `3`: clear card layout view
+- `4`: clear card layout view
+- `0`: cinematic view of the room
+- `G`: both players draw one random card; draws stop after five presses
+- `D`: both players discard a selected card
 - `Esc`: quit
 
 The scene includes a three-zone table, wooden flooring, striped wallpaper, a torn poster, and three decor pieces: a lamp, plant, and side cabinet. Cards use procedural character/suit textures and do not require external assets.

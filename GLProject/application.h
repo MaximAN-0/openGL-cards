@@ -20,48 +20,16 @@
 class Application {
 public:
     Application() {
+        glfwSetErrorCallback([](int code, const char* msg) { std::cerr << "[GLFW " << code << "] " << msg << "\n"; });
         if (!glfwInit()) throw std::runtime_error("GLFW initialization failed");
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_SAMPLES, 4);
-#ifdef __APPLE__
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-        window_ = glfwCreateWindow(cfg::kWindowW, cfg::kWindowH, "Card Room", nullptr, nullptr);
-        if (!window_) throw std::runtime_error("Window creation failed");
-        glfwMakeContextCurrent(window_);
-        glfwSwapInterval(1);
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) throw std::runtime_error("GLAD initialization failed");
-        glfwGetFramebufferSize(window_, &fbW_, &fbH_);
-
-        glfwSetWindowUserPointer(window_, this);
-        glfwSetKeyCallback(window_, [](GLFWwindow* w, int key, int, int action, int) {
-            static_cast<Application*>(glfwGetWindowUserPointer(w))->onKey(key, action);
-        });
-        glfwSetFramebufferSizeCallback(window_, [](GLFWwindow* w, int fw, int fh) {
-            auto* a = static_cast<Application*>(glfwGetWindowUserPointer(w));
-            a->fbW_ = fw; a->fbH_ = fh;
-            glViewport(0, 0, fw, fh);
-        });
-
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_MULTISAMPLE);
-
-        shader_ = std::make_unique<Shader>(kVertexSrc, kFragmentSrc);
-        prims_ = std::make_unique<Primitives>();
-        room_ = std::make_unique<Room>(*prims_);
-        table_ = std::make_unique<Table>(*prims_);
-        game_ = std::make_unique<Game>(makeCharacterDeck());
-
-        std::cout << "\n1-4 views (3 = first-person fan) | 0 cinematic | G draw | LEFT/RIGHT select | D discard | ESC quit\n";
+        try {
+            init();
+        } catch (...) {
+            shutdown();   // a failed start-up still releases GL objects, then the window, then GLFW
+            throw;
+        }
     }
-    ~Application() {
-        // GL objects must die while the context still exists.
-        game_.reset(); table_.reset(); room_.reset(); prims_.reset(); shader_.reset();
-        if (window_) glfwDestroyWindow(window_);
-        glfwTerminate();
-    }
+    ~Application() { shutdown(); }
     Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
 
@@ -79,14 +47,65 @@ public:
     }
 
 private:
+    void init() {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_SAMPLES, 4);
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+        window_ = glfwCreateWindow(cfg::kWindowW, cfg::kWindowH, "Card Room", nullptr, nullptr);
+        if (!window_) throw std::runtime_error("Window creation failed (an OpenGL 3.3 core context is required)");
+        glfwMakeContextCurrent(window_);
+        glfwSwapInterval(1);
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) throw std::runtime_error("GLAD initialization failed");
+        glfwGetFramebufferSize(window_, &fbW_, &fbH_);
+        glViewport(0, 0, fbW_, fbH_);   // set explicitly instead of relying on the driver default (matters on HiDPI)
+
+        glfwSetWindowUserPointer(window_, this);
+        glfwSetKeyCallback(window_, [](GLFWwindow* w, int key, int, int action, int) {
+            static_cast<Application*>(glfwGetWindowUserPointer(w))->onKey(key, action);
+        });
+        glfwSetFramebufferSizeCallback(window_, [](GLFWwindow* w, int fw, int fh) {
+            auto* a = static_cast<Application*>(glfwGetWindowUserPointer(w));
+            a->fbW_ = fw; a->fbH_ = fh;
+            glViewport(0, 0, fw, fh);
+        });
+        // Windows and macOS stop glfwPollEvents while a window is being dragged or resized. Redrawing from the
+        // refresh callback keeps the scene live instead of frozen and stretched during the resize.
+        glfwSetWindowRefreshCallback(window_, [](GLFWwindow* w) {
+            static_cast<Application*>(glfwGetWindowUserPointer(w))->render();
+            glfwSwapBuffers(w);
+        });
+
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_MULTISAMPLE);
+
+        shader_ = std::make_unique<Shader>(kVertexSrc, kFragmentSrc);
+        prims_ = std::make_unique<Primitives>();
+        room_ = std::make_unique<Room>(*prims_);
+        table_ = std::make_unique<Table>(*prims_);
+        game_ = std::make_unique<Game>(makeCharacterDeck());
+
+        std::cout << "\n1-4 views (2 = first-person fan) | 0 cinematic | G draw | LEFT/RIGHT select | D discard | ESC quit\n";
+    }
+
+    // GL objects must die while the context still exists. Safe to call more than once.
+    void shutdown() {
+        game_.reset(); table_.reset(); room_.reset(); prims_.reset(); shader_.reset();
+        if (window_) { glfwDestroyWindow(window_); window_ = nullptr; }
+        glfwTerminate();
+    }
+
     void onKey(int key, int action) {
         if (action == GLFW_RELEASE) return;
         const bool press = (action == GLFW_PRESS);
         switch (key) {
             case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window_, GLFW_TRUE); break;
             case GLFW_KEY_1: if (press) setView(1); break;
-            case GLFW_KEY_2: if (press) setView(2); break;
-            case GLFW_KEY_3: if (press) setView(3); break;
+            case GLFW_KEY_2: if (press) setView(3); break;
+            case GLFW_KEY_3: if (press) setView(2); break;
             case GLFW_KEY_4: if (press) setView(4); break;
             case GLFW_KEY_0: if (press) toggleCinematic(); break;
             case GLFW_KEY_G: if (press) game_->drawRound(); break;

@@ -4,12 +4,12 @@
 #include <glm/glm.hpp>
 
 #ifndef ASSET_DIR
-#define ASSET_DIR "../assets/"
+#define ASSET_DIR "assets/"
 #endif
 
 namespace cfg {
 constexpr int   kWindowW = 1280, kWindowH = 800;
-constexpr int   kMaxDraws = 6;
+constexpr int   kMaxDraws = 5;
 constexpr float kOpponentDelay = 0.5f;
 constexpr float kCardW = 0.82f, kCardH = 1.22f;
 constexpr float kCardY = 0.965f;          // resting height of a card above the table

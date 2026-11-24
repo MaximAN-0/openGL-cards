@@ -7,6 +7,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -79,17 +80,55 @@ inline Image wallpaper() {
     return img;
 }
 
-// Poster that is torn away along its right side and at the top-right corner.
+// Tear shape in a canonical 256x384 poster space, so it fits an image of any size (generated or loaded from a file):
+// the right side is ripped away along a ragged line and the top-right corner is gone.
+struct TearInfo { bool torn; float dist; };   // dist = distance (canonical px) from the ragged edge
+inline TearInfo tearAt(int x, int y, int W, int H) {   // y counts from the bottom row
+    const float cx = (x + .5f) * 256.f / W, cy = (y + .5f) * 384.f / H, cyTop = 384.f - cy;
+    const float edge = 256.f * 0.80f + 16.f * (vnoise(cy * 0.06f, 3.f) - 0.5f) * 2.f + 6.f * (hash2(int(cy) / 2, 5) - 0.5f)
+                     + 1.5f * (hash2(x, y) - 0.5f);   // fine per-pixel fray
+    const bool corner = cx > 256.f * 0.55f && cyTop < (cx - 256.f * 0.55f) * 0.75f + 6.f * vnoise(cx * 0.1f, 9.f);
+    return {cx > edge || corner, edge - cx};
+}
+
+// Rip the right side / top-right corner off ANY poster image: torn pixels become transparent (the shader discards them)
+// and the surviving edge gets a pale fibrous paper border.
+inline void applyTear(Image& img) {
+    const glm::vec3 paper(.93f, .90f, .82f);
+    for (int y = 0; y < img.h; ++y)
+        for (int x = 0; x < img.w; ++x) {
+            unsigned char* p = &img.px[(static_cast<size_t>(y) * img.w + x) * 4];
+            const TearInfo t = tearAt(x, y, img.w, img.h);
+            if (t.torn) { p[0] = p[1] = p[2] = p[3] = 0; continue; }
+            if (t.dist < 7.f) {
+                const glm::vec3 c(p[0] / 255.f, p[1] / 255.f, p[2] / 255.f);
+                const glm::vec3 m = glm::mix(paper, c, std::clamp(t.dist / 7.f, 0.f, 1.f));
+                p[0] = (unsigned char)(m.x * 255.f + .5f);
+                p[1] = (unsigned char)(m.y * 255.f + .5f);
+                p[2] = (unsigned char)(m.z * 255.f + .5f);
+            }
+        }
+}
+
+// Read an image file as RGBA (rows bottom-up, like the GL textures); nullopt if it can't be loaded.
+inline std::optional<Image> loadImage(const std::string& path) {
+    stbi_set_flip_vertically_on_load(1);
+    int w, h, n;
+    unsigned char* data = stbi_load(path.c_str(), &w, &h, &n, 4);
+    if (!data) return std::nullopt;
+    Image img(w, h);
+    std::copy(data, data + static_cast<size_t>(w) * h * 4, img.px.begin());
+    stbi_image_free(data);
+    return img;
+}
+
+// Generated poster artwork, torn with the same routine used for loaded posters.
 inline Image tornPoster() {
     const int W = 256, H = 384;
     Image img(W, H);
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const float ytop = float(H - 1 - y), u = x / float(W - 1), v = y / float(H - 1);
-            const float edge = W * 0.80f + 16.f * (vnoise(y * 0.06f, 3.f) - 0.5f) * 2.f + 6.f * (hash2(y / 2, 5) - 0.5f);
-            const bool corner = x > W * 0.55f && ytop < (x - W * 0.55f) * 0.75f + 6.f * vnoise(x * 0.1f, 9.f);
-            if (x > edge || corner) { img.set(x, y, glm::vec3(0.f), 0.f); continue; }
-
             glm::vec3 c = glm::mix(glm::vec3(.10f, .18f, .32f), glm::vec3(.55f, .20f, .25f), v);
             if (x < 10 || ytop < 10 || y < 10) c = glm::vec3(.92f, .80f, .45f);
             float du = std::fabs(u - .42f), dv = std::fabs(v - .58f);
@@ -103,11 +142,9 @@ inline Image tornPoster() {
             if (vnoise(x * .02f + 7.f, y * .02f) > .62f) c = glm::mix(c, glm::vec3(.45f, .35f, .2f), .5f);
             if (hash2(x, y) > .985f) c = glm::vec3(.9f, .88f, .8f);
             if (std::abs(x - 90) < 1 || std::abs(y - 190) < 1) c *= 1.25f;
-            // fibrous paper edge along the tear
-            float d = edge - x;
-            if (d < 7.f) c = glm::mix(glm::vec3(.93f, .90f, .82f), c, std::clamp(d / 7.f, 0.f, 1.f));
             img.set(x, y, c);
         }
+    applyTear(img);
     return img;
 }
 
@@ -182,4 +219,14 @@ inline std::shared_ptr<Texture> loadTexture(const std::string& rel, bool repeat,
     if (auto t = Texture::fromFile(std::string(ASSET_DIR) + rel, repeat)) return t;
     std::cout << "[assets] " << rel << " not found - using a procedural texture\n";
     return fallback().upload(repeat);
+}
+
+// Poster loader: a file from ASSET_DIR gets the same tear as the generated poster, so both are torn.
+inline std::shared_ptr<Texture> loadTornTexture(const std::string& rel, bool repeat) {
+    if (auto img = Procedural::loadImage(std::string(ASSET_DIR) + rel)) {
+        Procedural::applyTear(*img);
+        return img->upload(repeat);
+    }
+    std::cout << "[assets] " << rel << " not found - using a procedural texture\n";
+    return Procedural::tornPoster().upload(repeat);
 }

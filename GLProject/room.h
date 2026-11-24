@@ -19,7 +19,8 @@ public:
         : prim_(p),
           floor_(Mesh::quad(), loadTexture("wood.png", true, Procedural::wood)),
           wall_(Mesh::quad(), loadTexture("wallpaper.png", true, Procedural::wallpaper)),
-          poster_(Mesh::quad(), loadTexture("poster.png", false, Procedural::tornPoster)) {
+          poster_(Mesh::quad(), loadTornTexture("poster.png", false))   // loaded posters are torn too
+        {
         const float f = cfg::kFloorY;
         // Zabutons where the players sit (player in front, opponent across the table).
         extras_.push_back(std::make_unique<Zabuton>(prim_, glm::vec3(0, f, cfg::kSeatZ), glm::vec3(.62f, .10f, .14f)));
